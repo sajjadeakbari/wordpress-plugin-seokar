@@ -1,0 +1,27 @@
+{
+    "name": "seokar/seokar",
+    "description": "افزونه سئو پیشرفته وردپرس سئوکار - راهکار جامع و هوشمند برای بهینه‌سازی تخصصی وب‌سایت شما.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Sajjad Akbari",
+            "email": "your-email@example.com",
+            "homepage": "https://sajjadakbari.ir"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "SeoKar\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    }
+}
