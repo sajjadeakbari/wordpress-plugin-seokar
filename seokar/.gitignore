@@ -1,0 +1,11 @@
+/vendor/
+composer.lock
+*.log
+*.pot
+*.mo
+*.po
+nbproject/
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
