@@ -1,103 +1,123 @@
 <?php
 /**
- * Plugin Name:       سئوکار
- * Plugin URI:        https://yourwebsite.com/seokar
- * Description:       افزونه جامع و هوشمند سئو وردپرس برای بهینه‌سازی تخصصی وب‌سایت شما.
+ * Plugin Name:       SeoKar
+ * Plugin URI:        https://seokar.click
+ * Description:       افزونه سئو پیشرفته وردپرس "سئوکار" - راهکار جامع و هوشمند برای بهینه‌سازی تخصصی وب‌سایت شما و پیشی گرفتن از رقبا با تکیه بر جدیدترین متدهای سئو و هوش مصنوعی.
  * Version:           0.1.0
- * Author:            [نام شما یا شرکت شما]
- * Author URI:        https://yourwebsite.com
+ * Author:            Sajjad Akbari
+ * Author URI:        https://sajjadakbari.ir
  * License:           GPLv2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       seokar
  * Domain Path:       /languages
  * Requires at least: 5.8
  * Requires PHP:      7.4
+ *
+ * @package SeoKar
  */
 
-// جلوگیری از دسترسی مستقیم به فایل
-if ( ! defined( 'ABSPATH' ) ) {
-    exit; // Exit if accessed directly.
+// جلوگیری از اجرای مستقیم فایل
+defined( 'ABSPATH' ) or die( 'Hey, what are you doing here? You are not supposed to be here!' );
+
+// --- ۱. بررسی حداقل نیازمندی‌های PHP و WordPress ---
+define( 'SEOKAR_MINIMUM_PHP_VERSION', '7.4' );
+define( 'SEOKAR_MINIMUM_WP_VERSION', '5.8' );
+define( 'SEOKAR_PLUGIN_BASENAME_FOR_CHECK', plugin_basename( __FILE__ ) ); // برای استفاده در deactivate_plugins
+
+// بررسی نسخه PHP
+if ( version_compare( PHP_VERSION, SEOKAR_MINIMUM_PHP_VERSION, '<' ) ) {
+    add_action( 'admin_notices', function() {
+        $message = sprintf(
+            /* translators: 1: Required PHP version, 2: Current PHP version */
+            esc_html__( 'SeoKar requires PHP version %1$s or higher. You are running version %2$s. The plugin has been deactivated.', 'seokar' ),
+            SEOKAR_MINIMUM_PHP_VERSION,
+            PHP_VERSION
+        );
+        echo '<div class="error"><p>' . wp_kses_post( $message ) . '</p></div>';
+    });
+    // غیرفعال کردن افزونه
+    add_action('admin_init', function() {
+        if ( is_plugin_active( SEOKAR_PLUGIN_BASENAME_FOR_CHECK ) ) {
+            deactivate_plugins( SEOKAR_PLUGIN_BASENAME_FOR_CHECK );
+            // جلوگیری از نمایش پیام "Plugin activated."
+            if ( isset( $_GET['activate'] ) ) {
+                unset( $_GET['activate'] );
+            }
+        }
+    });
+    return; // توقف اجرای بیشتر فایل
 }
 
-// تعریف ثابت‌های اصلی افزونه
-define( 'SEOKAR_VERSION', '0.1.0' );
-define( 'SEOKAR_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'SEOKAR_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'SEOKAR_PLUGIN_FILE', __FILE__ );
-define( 'SEOKAR_TEXT_DOMAIN', 'seokar' ); // << ثابت از قبل تعریف شده بود
+// بررسی نسخه WordPress
+global $wp_version;
+if ( version_compare( $wp_version, SEOKAR_MINIMUM_WP_VERSION, '<' ) ) {
+    add_action( 'admin_notices', function() use ( $wp_version ) { // $wp_version از طریق use به کلوژر پاس داده می‌شود
+        $message = sprintf(
+            /* translators: 1: Required WordPress version, 2: Current WordPress version */
+            esc_html__( 'SeoKar requires WordPress version %1$s or higher. You are running version %2$s. The plugin has been deactivated.', 'seokar' ),
+            SEOKAR_MINIMUM_WP_VERSION,
+            $wp_version
+        );
+        echo '<div class="error"><p>' . wp_kses_post( $message ) . '</p></div>';
+    });
+    // غیرفعال کردن افزونه
+    add_action('admin_init', function() {
+         if ( is_plugin_active( SEOKAR_PLUGIN_BASENAME_FOR_CHECK ) ) {
+            deactivate_plugins( SEOKAR_PLUGIN_BASENAME_FOR_CHECK );
+            if ( isset( $_GET['activate'] ) ) {
+                unset( $_GET['activate'] );
+            }
+        }
+    });
+    return; // توقف اجرای بیشتر فایل
+}
+unset($wp_version); // پاک کردن متغیر گلوبال
+
+// --- ۲. بارگذاری Autoloader تولید شده توسط Composer ---
+if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
+    require_once __DIR__ . '/vendor/autoload.php';
+} else {
+    // این پیام معمولاً نباید به کاربر نهایی نمایش داده شود مگر در موارد خاص نصب دستی نادرست.
+    // یک توسعه‌دهنده باید Composer را اجرا کرده باشد.
+    if ( defined('WP_DEBUG') && WP_DEBUG ) {
+        error_log( 'SeoKar Plugin Error: Composer autoloader not found. Please run "composer install".' );
+    }
+    if ( is_admin() ) {
+        add_action( 'admin_notices', function() {
+            $message = '<strong>' . esc_html__( 'SeoKar Plugin Critical Error:', 'seokar' ) . '</strong> ' .
+                       esc_html__( 'The Composer autoloader is missing. The plugin cannot function. Please run "composer install" in the plugin directory or contact support.', 'seokar' );
+            echo '<div class="error"><p>' . wp_kses_post( $message ) . '</p></div>';
+        });
+    }
+    return; // توقف اجرای بیشتر فایل، چون بدون autoloader افزونه کار نخواهد کرد.
+}
+
+// --- ۳. تعریف تابع اصلی و راه‌اندازی افزونه ---
 
 /**
- * تابع اصلی برای اجرای افزونه سئوکار.
+ * تابع اصلی برای برگرداندن نمونه کلاس SeoKar\Main.
+ * این روشی برای دسترسی آسان به نمونه کلاس اصلی است.
+ * این تابع همچنین مسئولیت راه‌اندازی اولیه (نمونه‌سازی) کلاس اصلی را بر عهده دارد
+ * و مسیر فایل اصلی افزونه را به آن پاس می‌دهد.
+ *
+ * @since  0.1.0
+ * @return \SeoKar\Main نمونه کلاس اصلی افزونه.
  */
-function seokar_run_plugin() {
-    // بارگذاری فایل ترجمه
-    load_plugin_textdomain(
-        SEOKAR_TEXT_DOMAIN, // <--- استفاده از ثابت به جای رشته متنی
-        false,
-        dirname( plugin_basename( SEOKAR_PLUGIN_FILE ) ) . '/languages/'
-    );
-
-    // در اینجا فایل‌های اصلی کلاس‌ها و توابع را include خواهیم کرد.
-    require_once SEOKAR_PLUGIN_DIR . 'includes/class-seokar-core.php';
-
-    // نمونه‌سازی کلاس اصلی افزونه
-    if ( class_exists( 'SeoKar_Core' ) ) {
-        // برای اطمینان از اینکه فقط یک نمونه از کلاس اصلی داریم (Singleton)
-        // می‌توانیم یک متد استاتیک get_instance() در کلاس SeoKar_Core داشته باشیم
-        // $GLOBALS['seokar'] = SeoKar_Core::get_instance();
-        // یا اگر get_instance پیاده سازی نشده:
-        $GLOBALS['seokar_instance'] = new SeoKar_Core();
-        $GLOBALS['seokar_instance']->run();
+function SeoKar() {
+    // استفاده از متغیر استاتیک برای اطمینان از اینکه کلاس Main فقط یک بار با پارامتر مقداردهی اولیه می‌شود.
+    static $instance = null;
+    if ( null === $instance ) {
+        // مسیر فایل اصلی افزونه (همین فایل seokar.php) به کانستراکتور کلاس Main پاس داده می‌شود.
+        $instance = \SeoKar\Main::get_instance( __FILE__ );
     }
-
-    // سایر تنظیمات اولیه در اینجا قرار می‌گیرند
+    return $instance;
 }
-add_action( 'plugins_loaded', 'seokar_run_plugin' );
 
-/**
- * توابع فعال‌سازی و غیرفعال‌سازی افزونه
- */
-function seokar_activate() {
-    if ( ! get_option( 'seokar_setup_wizard_completed' ) && ! get_option( 'seokar_initial_version' ) ) {
-        set_transient( 'seokar_activation_redirect', true, 30 );
-    }
-    // ذخیره نسخه اولیه افزونه برای مدیریت آپدیت‌ها یا تغییرات ساختاری در آینده
-    update_option( 'seokar_initial_version', SEOKAR_VERSION );
-    // ذخیره نسخه فعلی افزونه
-    update_option( 'seokar_current_version', SEOKAR_VERSION );
+// راه‌اندازی افزونه: فراخوانی تابع SeoKar() برای ایجاد/دریافت نمونه کلاس Main و اجرای کانستراکتور آن.
+// کانستراکتور کلاس Main مسئولیت تعریف ثابت‌ها و ثبت هوک‌های اولیه را بر عهده دارد.
+SeoKar();
 
-    flush_rewrite_rules();
-}
-register_activation_hook( SEOKAR_PLUGIN_FILE, 'seokar_activate' );
+// اطمینان از اینکه متغیرهای موقت دیگر در scope گلوبال باقی نمانند
+unset(SEOKAR_MINIMUM_PHP_VERSION, SEOKAR_MINIMUM_WP_VERSION, SEOKAR_PLUGIN_BASENAME_FOR_CHECK);
 
-function seokar_deactivate() {
-    flush_rewrite_rules();
-}
-register_deactivation_hook( SEOKAR_PLUGIN_FILE, 'seokar_deactivate' );
-
-/*
-seokar/
-├── seokar.php
-├── uninstall.php
-├── languages/
-├── assets/
-│   ├── css/
-│   ├── js/
-│   └── images/
-├── includes/
-│   ├── class-seokar-core.php <--- فایل بعدی ما
-│   ├── class-seokar-settings.php
-│   ├── class-seokar-setup-wizard.php
-│   ├── admin/
-│   │   └── class-seokar-admin-menus.php
-│   │   └── ...
-│   ├── frontend/
-│   │   └── class-seokar-frontend-output.php
-│   │   └── ...
-│   ├── modules/
-│   │   └── ...
-│   └── helpers/
-│       └── functions.php
-└── templates/
-*/
 ?>
