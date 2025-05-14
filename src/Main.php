@@ -72,7 +72,6 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
         private function __construct( $plugin_file_path ) {
             $this->plugin_file_path = $plugin_file_path;
 
-            // هوک‌های اکشن و فیلتر داخلی برای توسعه‌پذیری
             /**
              * Fires before SeoKar constants are defined.
              * @since 0.1.0
@@ -86,8 +85,6 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
              * @param Main $this Instance of the Main class.
              */
             do_action( 'seokar_after_constants_defined', $this );
-
-            // Autoloader توسط Composer مدیریت می‌شود و در seokar.php بارگذاری شده است.
 
             /**
              * Fires before SeoKar initial hooks are registered.
@@ -153,7 +150,6 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
         public static function get_instance( $plugin_file_path = null ) {
             if ( null === self::$instance ) {
                 if ( null === $plugin_file_path ) {
-                    // این حالت نباید رخ دهد اگر از تابع کمکی SeoKar() در seokar.php استفاده شود.
                     throw new \Exception( 'Plugin file path must be provided on first instantiation of SeoKar\\Main class.' );
                 }
                 self::$instance = new self( $plugin_file_path );
@@ -163,7 +159,6 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
 
         /**
          * تعریف ثابت‌های اصلی و کاربردی افزونه.
-         * این ثابت‌ها برای دسترسی آسان به مسیرها، URLها و سایر اطلاعات مهم استفاده می‌شوند.
          *
          * @since  0.1.0
          * @access private
@@ -188,9 +183,8 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
                 define( 'SEOKAR_PLUGIN_DIR', plugin_dir_path( SEOKAR_PLUGIN_FILE ) );
             }
             if ( ! defined( 'SEOKAR_SRC_DIR' ) ) {
-                define( 'SEOKAR_SRC_DIR', SEOKAR_PLUGIN_DIR . 'src/' ); // دایرکتوری سورس کد اصلی با namespace SeoKar
+                define( 'SEOKAR_SRC_DIR', SEOKAR_PLUGIN_DIR . 'src/' );
             }
-            // مسیرهای پوشه‌های admin, public, templates برای فایل‌های غیر کلاسی (مانند تمپلیت‌ها، فایل‌های JS/CSS جانبی)
             if ( ! defined( 'SEOKAR_ADMIN_FILES_DIR' ) ) {
                 define( 'SEOKAR_ADMIN_FILES_DIR', SEOKAR_PLUGIN_DIR . 'admin/' );
             }
@@ -204,7 +198,7 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
                 define( 'SEOKAR_ASSETS_DIR', SEOKAR_PLUGIN_DIR . 'assets/' );
             }
             if ( ! defined( 'SEOKAR_LANG_DIR_NAME' ) ) {
-                define( 'SEOKAR_LANG_DIR_NAME', 'languages' ); // فقط نام پوشه
+                define( 'SEOKAR_LANG_DIR_NAME', 'languages' );
             }
             if ( ! defined( 'SEOKAR_LANG_DIR' ) ) {
                 define( 'SEOKAR_LANG_DIR', SEOKAR_PLUGIN_DIR . SEOKAR_LANG_DIR_NAME . '/' );
@@ -236,56 +230,53 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
          * @access private
          */
         private function init_hooks() {
-            // بارگذاری Text Domain برای ترجمه افزونه
             add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
 
-            // ثبت هوک‌های فعال‌سازی و غیرفعال‌سازی افزونه
             register_activation_hook( SEOKAR_PLUGIN_FILE, array( __CLASS__, 'activate' ) );
             register_deactivation_hook( SEOKAR_PLUGIN_FILE, array( __CLASS__, 'deactivate' ) );
 
-            // بارگذاری کامپوننت‌های مربوط به بخش مدیریت (مانند منوها)
             if ( is_admin() || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
-                // اولویت 15 برای اجرا پس از بارگذاری Text Domain (که معمولاً اولویت 10 دارد)
                 add_action( 'plugins_loaded', array( $this, 'load_admin_components' ), 15 );
             }
 
-            // اجرای متد run اصلی افزونه پس از بارگذاری کامل افزونه‌ها
-            // اولویت 20 برای اجرا پس از سایر بارگذاری‌های اولیه (textdomain, admin_components)
             add_action( 'plugins_loaded', array( $this, 'run' ), 20 );
 
-            // مثال برای یک هوک که به متد run در زمان دیگری نیاز دارد
-            // add_action( 'wp_loaded', array( $this, 'late_run_tasks' ) );
+            // هوک برای ثبت اسکریپت‌ها و استایل‌های ادمین
+            add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+            // هوک برای ثبت اسکریپت‌ها و استایل‌های بخش کاربری (در صورت نیاز)
+            // add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_public_assets' ) );
         }
 
         /**
          * بارگذاری و نمونه‌سازی کامپوننت‌های هسته‌ای افزونه.
-         * این متد در کانستراکتور فراخوانی می‌شود.
          *
          * @since 0.1.0
          * @access private
          */
         private function load_core_components() {
-            // مثال: بارگذاری کلاس مدیریت تنظیمات (Settings API)
-            // if ( class_exists( 'SeoKar\\Core\\Settings_Manager' ) ) { // نام کلاس می‌تواند متفاوت باشد
-            //     Core\Settings_Manager::get_instance();
+            // مثال: بارگذاری کلاس مدیریت آپگریدها
+            // if ( class_exists( 'SeoKar\\Core\\Upgrader' ) ) {
+            //     Core\Upgrader::get_instance()->init_hooks();
             // }
 
-            // مثال: بارگذاری کلاس مدیریت آپگریدها و مایگریشن‌های دیتابیس
-            // if ( class_exists( 'SeoKar\\Core\\Upgrader' ) ) {
-            //     Core\Upgrader::get_instance()->init_hooks(); // یا check_for_updates()
+            // مثال: بارگذاری کلاس برای مدیریت AJAX یا REST API endpoints
+            // if ( class_exists( 'SeoKar\\Core\\Ajax_Handler' ) ) {
+            //     Core\Ajax_Handler::get_instance()->init_hooks();
+            // }
+            // if ( class_exists( 'SeoKar\\Core\\Rest_Api_Controller' ) ) {
+            //     Core\Rest_Api_Controller::get_instance()->register_routes();
             // }
 
             /**
-             * Fires after core components are loaded, allowing other core parts to initialize.
+             * Fires after core components are loaded.
              * @since 0.1.0
              * @param Main $this Instance of the Main class.
              */
-            do_action( 'seokar_core_components_loaded_hook', $this ); // تغییر نام هوک برای وضوح بیشتر
+            do_action( 'seokar_core_components_loaded_hook', $this );
         }
 
         /**
          * بارگذاری کامپوننت‌های بخش مدیریت (Admin).
-         * این متد از طریق هوک 'plugins_loaded' فراخوانی می‌شود.
          *
          * @since 0.1.0
          * @access public
@@ -296,15 +287,22 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
                 \SeoKar\Admin\Menu_Manager::get_instance();
             }
 
-            // مثال: بارگذاری کنترلر اصلی بخش ادمین (برای صفحات تنظیمات، متا باکس‌ها و ...)
+            // بارگذاری و نمونه‌سازی کلاس صفحه تنظیمات عمومی
+            if ( class_exists( 'SeoKar\\Admin\\Settings\\General_Settings_Page' ) ) {
+                \SeoKar\Admin\Settings\General_Settings_Page::get_instance();
+            }
+
+            // مثال: بارگذاری کنترلر اصلی بخش ادمین (برای متا باکس‌ها، نوتیس‌ها و ...)
             // if ( class_exists( 'SeoKar\\Admin\\Admin_Controller' ) ) {
             //     Admin\Admin_Controller::get_instance()->init();
             // }
 
-            // مثال: بارگذاری جادوگر راه‌اندازی اولیه (اگر هنوز تکمیل نشده باشد)
-            // $setup_wizard_completed = get_option( 'seokar_settings_general', array() )['setup_wizard_completed'] ?? false;
+            // مثال: بارگذاری جادوگر راه‌اندازی اولیه
+            // $general_settings = get_option( 'seokar_settings_general', array() );
+            // $setup_wizard_completed = isset( $general_settings['setup_wizard_completed'] ) ? $general_settings['setup_wizard_completed'] : false;
             // if ( class_exists( 'SeoKar\\Admin\\Setup_Wizard' ) && ! $setup_wizard_completed ) {
-            //     Admin\Setup_Wizard::get_instance()->init_hooks();
+            //     // Setup_Wizard باید خودش هوک‌های مربوط به ریدایرکت و نمایش صفحه را مدیریت کند
+            //     Admin\Setup_Wizard::get_instance();
             // }
 
             /**
@@ -312,13 +310,12 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
              * @since 0.1.0
              * @param Main $this Instance of the Main class.
              */
-            do_action( 'seokar_admin_components_loaded_hook', $this ); // تغییر نام هوک
+            do_action( 'seokar_admin_components_loaded_hook', $this );
         }
 
 
         /**
-         * بارگذاری فایل ترجمه (.mo) افزونه.
-         * این متد از طریق هوک 'plugins_loaded' فراخوانی می‌شود.
+         * بارگذاری فایل ترجمه افزونه.
          *
          * @since  0.1.0
          * @access public
@@ -334,7 +331,7 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
             load_plugin_textdomain(
                 SEOKAR_TEXT_DOMAIN,
                 false,
-                SEOKAR_LANG_DIR_NAME // مسیر نسبی به پوشه languages از ریشه افزونه
+                SEOKAR_LANG_DIR_NAME
             );
 
             /**
@@ -346,8 +343,67 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
         }
 
         /**
-         * تابع اجرا شونده هنگام فعال‌سازی افزونه توسط کاربر.
-         * این متد به صورت استاتیک تعریف شده و از طریق register_activation_hook فراخوانی می‌شود.
+         * ثبت و بارگذاری اسکریپت‌ها و استایل‌های بخش مدیریت.
+         *
+         * @since 0.1.0
+         * @access public
+         * @param string $hook_suffix نامک صفحه ادمین فعلی.
+         */
+        public function enqueue_admin_assets( $hook_suffix ) {
+            // مثال: بارگذاری یک فایل CSS عمومی برای تمام صفحات سئوکار
+            // if ( strpos( $hook_suffix, 'seokar-' ) !== false ) { // اگر نامک صفحه شامل 'seokar-' باشد
+            //     wp_enqueue_style(
+            //         'seokar-admin-common',
+            //         SEOKAR_ASSETS_URL . 'css/admin-common.css',
+            //         array(),
+            //         SEOKAR_VERSION
+            //     );
+            // }
+
+            // بارگذاری اسکریپت‌ها و استایل‌های مخصوص صفحه تنظیمات عمومی
+            // نامک این صفحه 'toplevel_page_seokar-dashboard' برای صفحه اصلی داشبورد
+            // و 'seokar_page_seokar-general-settings' (سئوکار_page_نامک-زیرمنو) برای صفحه تنظیمات عمومی است.
+            // یا می‌توانیم از get_current_screen()->id استفاده کنیم.
+            $current_screen = get_current_screen();
+            if ( $current_screen && $current_screen->id === 'seokar_page_seokar-general-settings' ) {
+                // فایل JS برای مدیریت نمایش شرطی فیلدها و Media Uploader
+                wp_enqueue_script(
+                    'seokar-admin-general-settings',
+                    SEOKAR_ASSETS_URL . 'js/admin-general-settings.js', // این فایل باید ایجاد شود
+                    array( 'jquery', 'wp-media' ), // وابستگی به jQuery و کتابخانه مدیا وردپرس
+                    SEOKAR_VERSION,
+                    true // بارگذاری در فوتر
+                );
+
+                // می‌توانید داده‌هایی را از PHP به JS ارسال کنید (مثلاً ترجمه‌ها یا تنظیمات خاص)
+                // wp_localize_script(
+                //     'seokar-admin-general-settings',
+                //     'seokarGeneralSettingsParams',
+                //     array(
+                //         'some_string' => __( 'Some translatable string for JS', 'seokar' ),
+                //         'ajax_nonce' => wp_create_nonce( 'seokar_general_settings_nonce' ),
+                //     )
+                // );
+
+                // فایل CSS برای صفحه تنظیمات عمومی (اگر استایل‌های خاصی دارد)
+                // wp_enqueue_style(
+                //     'seokar-admin-general-settings-styles',
+                //     SEOKAR_ASSETS_URL . 'css/admin-general-settings.css', // این فایل باید ایجاد شود
+                //     array(),
+                //     SEOKAR_VERSION
+                // );
+            }
+
+            /**
+             * Fires when admin assets are being enqueued for SeoKar pages.
+             * @since 0.1.0
+             * @param string $hook_suffix The current admin page hook.
+             */
+            do_action( 'seokar_enqueue_admin_assets', $hook_suffix );
+        }
+
+        /**
+         * تابع اجرا شونده هنگام فعال‌سازی افزونه.
          *
          * @since  0.1.0
          * @access public
@@ -356,7 +412,6 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
         public static function activate() {
             $current_version = defined('SEOKAR_VERSION') ? SEOKAR_VERSION : '0.1.0';
 
-            // ایجاد یا به‌روزرسانی گزینه اصلی تنظیمات عمومی
             $general_settings_option_name = 'seokar_settings_general';
             $general_settings = get_option( $general_settings_option_name, array() );
             if ( ! is_array( $general_settings ) ) {
@@ -369,13 +424,11 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
             }
             update_option( $general_settings_option_name, $general_settings );
 
-            // ذخیره نسخه اولیه نصب افزونه
             if ( false === get_option( 'seokar_initial_version' ) ) {
                 update_option( 'seokar_initial_version', $current_version );
             }
             update_option( 'seokar_current_version', $current_version );
 
-            // تنظیم یک transient برای ریدایرکت به جادوگر راه‌اندازی در اولین فعال‌سازی
             if ( ! $general_settings['setup_wizard_completed'] ) {
                  set_transient( 'seokar_activation_redirect', true, 30 );
             }
@@ -383,39 +436,35 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
             /**
              * Fires when the SeoKar plugin is activated.
              * @since 0.1.0
-             * @param string $current_version The current version of the plugin being activated.
+             * @param string $current_version The current version of the plugin.
              */
-            do_action( 'seokar_activated_hook', $current_version ); // تغییر نام هوک
+            do_action( 'seokar_activated_hook', $current_version );
 
             flush_rewrite_rules();
         }
 
         /**
-         * تابع اجرا شونده هنگام غیرفعال‌سازی افزونه توسط کاربر.
-         * این متد به صورت استاتیک تعریف شده و از طریق register_deactivation_hook فراخوانی می‌شود.
+         * تابع اجرا شونده هنگام غیرفعال‌سازی افزونه.
          *
          * @since  0.1.0
          * @access public
          * @static
          */
         public static function deactivate() {
-            // مثال: پاک کردن cron job های تعریف شده توسط افزونه
             // wp_clear_scheduled_hook( 'seokar_example_cron_hook' );
-
             delete_transient( 'seokar_activation_redirect' );
 
             /**
              * Fires when the SeoKar plugin is deactivated.
              * @since 0.1.0
              */
-            do_action( 'seokar_deactivated_hook' ); // تغییر نام هوک
+            do_action( 'seokar_deactivated_hook' );
 
             flush_rewrite_rules();
         }
 
         /**
          * متد اصلی برای اجرای منطق اصلی افزونه و بارگذاری ماژول‌ها.
-         * این متد از طریق هوک 'plugins_loaded' با اولویت بالاتر (دیرتر) فراخوانی می‌شود.
          *
          * @since  0.1.0
          * @access public
@@ -426,16 +475,16 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
              * @since 0.1.0
              * @param Main $this Instance of the Main class.
              */
-            do_action( 'seokar_before_run_hook', $this ); // تغییر نام هوک
+            do_action( 'seokar_before_run_hook', $this );
 
             // مثال: بارگذاری و نمونه‌سازی مدیر ماژول‌ها
             // if ( class_exists( 'SeoKar\\Core\\Module_Manager' ) ) {
-            //     Core\Module_Manager::get_instance()->load_modules();
+            //     Core\Module_Manager::get_instance()->load_active_modules();
             // }
 
-            // مثال: نمونه‌سازی و اجرای کلاس‌های بخش عمومی (frontend) اگر در فرانت‌اند هستیم
-            // if ( ! is_admin() && class_exists( 'SeoKar\\Public_Facing\\Output_Controller' ) ) {
-            //     Public_Facing\Output_Controller::get_instance()->init_hooks();
+            // مثال: بارگذاری کلاس‌های مربوط به بخش عمومی (frontend)
+            // if ( ! is_admin() && class_exists( 'SeoKar\\Public_Facing\\Frontend_Controller' ) ) {
+            //     Public_Facing\Frontend_Controller::get_instance()->init();
             // }
 
             /**
@@ -443,7 +492,7 @@ if ( ! class_exists( 'SeoKar\\Main' ) ) {
              * @since 0.1.0
              * @param Main $this Instance of the Main class.
              */
-            do_action( 'seokar_run_complete_hook', $this ); // تغییر نام هوک
+            do_action( 'seokar_run_complete_hook', $this );
         }
 
     } // پایان کلاس SeoKar\Main
